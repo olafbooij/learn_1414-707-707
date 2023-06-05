@@ -79,11 +79,14 @@ def load_labels(filename):
     return labels
 
 
-def relabel_set(dataset, filename):
+def relabel_set(dataset, filename, use_original_labels = False):
     labels = load_labels(filename)
     # change labels
     dataset.data = [dataset.data[index] for index in labels]
-    dataset.targets = [labels[index] for index in labels]
+    if use_original_labels:
+      dataset.targets = [dataset.targets[index] for index in labels]
+    else:
+      dataset.targets = [labels[index] for index in labels]
     return dataset
 
 
@@ -142,7 +145,7 @@ def main():
                        transform=transform)
     dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
-    relabel_set(dataset_train, 'mnist_labels/test2894.json')
+    relabel_set(dataset_train, 'mnist_labels/test2894.json', use_original_labels=True)
     train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
