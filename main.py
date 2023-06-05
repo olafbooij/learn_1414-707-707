@@ -1,5 +1,6 @@
 from __future__ import print_function
 import argparse
+import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -70,6 +71,22 @@ def test(model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 
+def load_labels(filename):
+    with open(filename) as labels_file:
+      labels_raw = json.load(labels_file)
+    labels_raw= [label for label in labels_raw if label['newLabel'] not in "psud-"] # remove non-integer input
+    labels = {label['index']: label['newLabel'] for label in labels_raw} # remove duplicates, keeping last
+    return labels
+
+
+def relabel_set(dataset, filename):
+    labels = load_labels(filename)
+    # change labels
+    dataset.data = [dataset.data[index] for index in labels]
+    dataset.targets = [labels[index] for index in labels]
+    return dataset
+
+
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -121,12 +138,13 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.MNIST('../data', train=True, download=True,
+    dataset_train = datasets.MNIST('../data', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('../data', train=False,
+    dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
-    train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
-    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    relabel_set(dataset_train, 'mnist_labels/test2894.json')
+    train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
+    test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
     model = Net().to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
