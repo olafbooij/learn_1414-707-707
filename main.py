@@ -1,12 +1,14 @@
 from __future__ import print_function
 import argparse
 import json
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
+from external.focal_loss_pytorch import focalloss
 
 
 class Net(nn.Module):
@@ -35,13 +37,27 @@ class Net(nn.Module):
         return output
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def determine_class_weights(train_loader):
+    number_per_target = np.zeros(10)
+    # print(len(train_loader.dataset))
+    for _, targets in train_loader:
+        number_per_target += np.bincount(targets, minlength=10)
+    weights =  number_per_target.sum() / number_per_target
+    return weights
+
+
+def train(args, model, device, train_loader, optimizer, weights, epoch, focal_loss=False):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        #loss = F.nll_loss(output, target)
+        if focal_loss:
+            loss_f = focalloss.FocalLoss(gamma=2.0, alpha=torch.Tensor(weights))
+            loss = loss_f(output, target)
+        else:
+            loss = F.nll_loss(output, target, weight=torch.Tensor(weights))
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -153,8 +169,13 @@ def main():
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    do_class_weighting = True
+    focal_loss = True
+    weights = determine_class_weights(train_loader)
+    if not do_class_weighting:
+        weights = np.ones(weights.size) / float(weights.size)
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
+        train(args, model, device, train_loader, optimizer, weights, epoch, focal_loss)
         test(model, device, test_loader)
         scheduler.step()
 
