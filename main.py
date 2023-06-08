@@ -39,8 +39,7 @@ class Net(nn.Module):
         x = self.fc1(x)
         x = F.relu(x)
         x = self.dropout2(x)
-        x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
+        output = self.fc2(x)
         return output
 
 
@@ -60,12 +59,11 @@ def train(args, model, device, train_loader, optimizer, weights, epoch, use_foca
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        #loss = F.nll_loss(output, target)
         if use_focal_loss:
             loss_f = focalloss.FocalLoss(gamma=2.0, alpha=torch.Tensor(weights))
             loss = loss_f(output, target)
         else:
-            loss = F.nll_loss(output, target, weight=torch.Tensor(weights))
+            loss = F.cross_entropy(output, target, weight=torch.Tensor(weights))
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -84,7 +82,7 @@ def test(model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -178,8 +176,7 @@ def main():
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
         cuda_kwargs = {'num_workers': 1,
-                       'pin_memory': True,
-                       'shuffle': True}
+                       'pin_memory': True}
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
