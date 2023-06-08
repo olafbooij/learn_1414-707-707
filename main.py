@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import json
+import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -112,6 +113,13 @@ def relabel_set(dataset, filename, use_original_labels):
     return dataset
 
 
+def unbalance_set(dataset, ratios):
+    data_targets = zip(dataset.data, dataset.targets)
+    unbalanced_data_targets = [data_target for data_target in data_targets if random.random() < ratios[data_target[1]] ]
+    dataset.data, dataset.targets = zip(*unbalanced_data_targets)
+    return dataset
+
+
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -174,6 +182,7 @@ def main():
     dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
     relabel_set(dataset_train, args.label_file, args.use_original_labels)
+    unbalance_set(dataset_train, [.1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
