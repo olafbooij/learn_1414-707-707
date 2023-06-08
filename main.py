@@ -106,16 +106,20 @@ def load_labels(filename):
 def relabel_set(dataset, filename, use_original_labels):
     labels = load_labels(filename)
     dataset.data = [dataset.data[index] for index in labels]
-    if use_original_labels:
-      dataset.targets = [dataset.targets[index] for index in labels]
-    else:
-      dataset.targets = [labels[index] for index in labels]
+    dataset.targets = [
+      dataset.targets[index] if use_original_labels
+      else labels[index]
+      for index in labels
+    ]
     return dataset
 
 
 def unbalance_set(dataset, ratios):
-    data_targets = zip(dataset.data, dataset.targets)
-    unbalanced_data_targets = [data_target for data_target in data_targets if random.random() < ratios[data_target[1]] ]
+    unbalanced_data_targets = [
+        data_target
+        for data_target in zip(dataset.data, dataset.targets)
+        if random.random() < ratios[data_target[1]]
+    ]
     dataset.data, dataset.targets = zip(*unbalanced_data_targets)
     return dataset
 
