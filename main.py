@@ -102,9 +102,8 @@ def load_labels(filename):
     return labels
 
 
-def relabel_set(dataset, filename, use_original_labels = False):
+def relabel_set(dataset, filename, use_original_labels):
     labels = load_labels(filename)
-    # change labels
     dataset.data = [dataset.data[index] for index in labels]
     if use_original_labels:
       dataset.targets = [dataset.targets[index] for index in labels]
@@ -116,6 +115,10 @@ def relabel_set(dataset, filename, use_original_labels = False):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--label_file', type=str, default='mnist_labels/test2894.json', metavar='FILE',
+                        help='filename with new mnist labels (default: mnist_labels/test2894.json)')
+    parser.add_argument('--use_original_labels', action='store_true',
+                        help='use original mnist labels instead of the provided labels (but do pick trainset according to new labels)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -170,7 +173,7 @@ def main():
                        transform=transform)
     dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
-    relabel_set(dataset_train, 'mnist_labels/test2894.json', use_original_labels=False)
+    relabel_set(dataset_train, args.label_file, args.use_original_labels)
     train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
