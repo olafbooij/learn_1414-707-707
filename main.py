@@ -7,9 +7,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+#from torchvision.models import resnet18
 from torch.optim.lr_scheduler import StepLR
 from external.focal_loss_pytorch import focalloss
 
+
+#def resnet_mnist():
+#    resnet = resnet18(num_classes=10)
+#    resnet.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1, bias=False)
+#    return resnet
 
 class Net(nn.Module):
     def __init__(self):
@@ -43,6 +49,7 @@ def determine_class_weights(train_loader):
     for _, targets in train_loader:
         number_per_target += np.bincount(targets, minlength=10)
     weights =  number_per_target.sum() / number_per_target
+    # weights /= weights.mean() # needed ?
     return weights
 
 
@@ -144,7 +151,9 @@ def main():
     else:
         device = torch.device("cpu")
 
-    train_kwargs = {'batch_size': args.batch_size}
+    train_kwargs = {'batch_size': args.batch_size,
+                    'shuffle'   : True
+                   }
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
         cuda_kwargs = {'num_workers': 1,
@@ -161,7 +170,7 @@ def main():
                        transform=transform)
     dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
-    relabel_set(dataset_train, 'mnist_labels/test2894.json', use_original_labels=True)
+    relabel_set(dataset_train, 'mnist_labels/test2894.json', use_original_labels=False)
     train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
