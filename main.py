@@ -54,14 +54,14 @@ def determine_class_weights(train_loader):
     return weights
 
 
-def train(args, model, device, train_loader, optimizer, weights, epoch, focal_loss=False):
+def train(args, model, device, train_loader, optimizer, weights, epoch, use_focal_loss):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
         #loss = F.nll_loss(output, target)
-        if focal_loss:
+        if use_focal_loss:
             loss_f = focalloss.FocalLoss(gamma=2.0, alpha=torch.Tensor(weights))
             loss = loss_f(output, target)
         else:
@@ -131,6 +131,12 @@ def main():
                         help='filename with new mnist labels (default: mnist_labels/test2894.json)')
     parser.add_argument('--use_original_labels', action='store_true',
                         help='use original mnist labels instead of the provided labels (but do pick trainset according to new labels)')
+    parser.add_argument('--unbalance_dataset', action='store_true',
+                        help='make dataset unbalanced by dropping samples with certain labels (using hardcoded ratios)')
+    parser.add_argument('--do_class_weighting', action='store_true',
+                        help='use class weighting during training (relevant for unbalanced datasets)')
+    parser.add_argument('--use_focal_loss', action='store_true',
+                        help='use focal loss instead of cross entropy loss')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -186,7 +192,8 @@ def main():
     dataset_test = datasets.MNIST('../data', train=False,
                        transform=transform)
     relabel_set(dataset_train, args.label_file, args.use_original_labels)
-    unbalance_set(dataset_train, [.1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    if args.unbalance_dataset:
+      unbalance_set(dataset_train, [.1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     train_loader = torch.utils.data.DataLoader(dataset_train,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
@@ -194,13 +201,11 @@ def main():
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
-    do_class_weighting = True
-    focal_loss = True
     weights = determine_class_weights(train_loader)
-    if not do_class_weighting:
+    if not args.do_class_weighting:
         weights = np.ones(weights.size) / float(weights.size)
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, weights, epoch, focal_loss)
+        train(args, model, device, train_loader, optimizer, weights, epoch, args.use_focal_loss)
         test(model, device, test_loader)
         scheduler.step()
 
