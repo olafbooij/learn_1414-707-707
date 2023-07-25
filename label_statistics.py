@@ -14,18 +14,16 @@ def load_labels(filename):
 
 def print_confusion(array2d):
     print()
-    def print_row(row):
+    def print_row(first_column, row):
+      print(first_column, end='')
       for x in row:
-        print('{:5d}'.format(x), end='')
+        print(f'{x:5d}', end='')
       print()
-    print("  |", end='')
-    print_row(range(10))
-    print('-'*(5*10+3))
+    print_row("   |", range(array2d.shape[1]))
+    print('-' * ( 5 * array2d.shape[1] + 4))
     for i, row in enumerate(array2d):
-      print(f"{i} |", end='')
-      print_row(row)
+      print_row(f"{i:2d} |", row)
     print()
-
 
 def report_statistics(dataset_orig, labels):
     print(f'nr of labels {len(labels)}')
